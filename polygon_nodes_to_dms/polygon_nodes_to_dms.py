@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QMessageBox, QWidget
 from qgis.core import *
 
 # Initialize Qt resources from file resources.py
@@ -46,6 +46,7 @@ class PolygonNodesToDMS:
         :type iface: QgsInterface
         """
         self.output_layer = None
+        self.current_layer = None
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
@@ -212,8 +213,30 @@ class PolygonNodesToDMS:
             self.create_output_layer(layer_name)
         self.iface.setActiveLayer(self.output_layer)
 
+    @staticmethod
+    def is_layer_polygon(layer):
+        if layer is None:
+            QMessageBox.critical(QWidget(), "Message", "No active layer.")
+        elif layer.wkbType() in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
+            return True
+        else:
+            QMessageBox.critical(QWidget(), "Message", "Active layer is not type: Polygon, Multipolygon.")
+
+    @staticmethod
+    def one_feature_selected(layer):
+        selected_count = layer.selectedFeatureCount()
+        if selected_count != 1:
+            QMessageBox.critical(QWidget(), "Message", "{} polygons selected.\n"
+                                                       "Select one polygon.".format(selected_count))
+        else:
+            return True
+
     def show_nodes_dms(self):
-        self.set_output_layer()
+        canvas = self.iface.mapCanvas()
+        current_layer = canvas.currentLayer()
+        if PolygonNodesToDMS.is_layer_polygon(current_layer):
+            if PolygonNodesToDMS.one_feature_selected(current_layer):
+                self.set_output_layer()
 
     def run(self):
         """Run method that performs all the real work"""
