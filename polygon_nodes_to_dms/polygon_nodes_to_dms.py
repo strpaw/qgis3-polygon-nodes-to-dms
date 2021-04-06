@@ -21,15 +21,17 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
+from qgis.core import *
 
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
 from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
 import os.path
+from datetime import datetime
 
 
 class PolygonNodesToDMS:
@@ -185,6 +187,34 @@ class PolygonNodesToDMS:
         self.output_layer = None
         self.dlg.radioButtonOrderLonLat.setChecked(True)
 
+    @staticmethod
+    def gen_output_layer_name():
+        """ Generate output layer name with the following pattern:
+        NodesDMS_<yyyy>_<mm>_<dd>_<hh><mm><sec><<frac_sec>
+        """
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S.%f")
+        return 'NodesDMS_{}'.format(timestamp)
+
+    def create_output_layer(self, layer_name):
+        """ Create output layer with polygons - memory layer. """
+        self.output_layer = QgsVectorLayer('Point?crs=epsg:4326', layer_name, 'memory')
+        provider = self.output_layer.dataProvider()
+        self.output_layer.startEditing()
+        provider.addAttributes([QgsField("LON_DMS", QVariant.String, len=30),
+                                QgsField("LAT_DMS", QVariant.String, len=30)])
+        self.output_layer.commitChanges()
+        QgsProject.instance().addMapLayer(self.output_layer)
+
+    def set_output_layer(self):
+        """ Set output layer for polygon nodes with DMS format as active. """
+        if self.output_layer is None:
+            layer_name = self.gen_output_layer_name()
+            self.create_output_layer(layer_name)
+        self.iface.setActiveLayer(self.output_layer)
+
+    def show_nodes_dms(self):
+        self.set_output_layer()
+
     def run(self):
         """Run method that performs all the real work"""
 
@@ -193,6 +223,7 @@ class PolygonNodesToDMS:
         if self.first_start == True:
             self.first_start = False
             self.dlg = PolygonNodesToDMSDialog()
+            self.dlg.pushButtonShowNodes.clicked.connect(self.show_nodes_dms)
 
         # show the dialog
         self.dlg.show()
