@@ -43,6 +43,7 @@ class PolygonNodesToDMS:
             application at run time.
         :type iface: QgsInterface
         """
+        self.output_layer = None
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
@@ -179,6 +180,10 @@ class PolygonNodesToDMS:
                 action)
             self.iface.removeToolBarIcon(action)
 
+    def set_initial_plugin_state(self):
+        """ Initialize plugin state when opened. """
+        self.output_layer = None
+        self.dlg.radioButtonOrderLonLat.setChecked(True)
 
     def run(self):
         """Run method that performs all the real work"""
@@ -191,6 +196,7 @@ class PolygonNodesToDMS:
 
         # show the dialog
         self.dlg.show()
+        self.set_initial_plugin_state()
         # Run the dialog event loop
         result = self.dlg.exec_()
         # See if OK was pressed
