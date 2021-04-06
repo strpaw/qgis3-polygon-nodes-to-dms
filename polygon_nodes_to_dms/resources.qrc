@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/polygon_nodes_to_dms" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
