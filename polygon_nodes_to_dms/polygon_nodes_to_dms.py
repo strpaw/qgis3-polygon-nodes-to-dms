@@ -201,16 +201,25 @@ class PolygonNodesToDMS:
         self.output_layer = QgsVectorLayer('Point?crs=epsg:4326', layer_name, 'memory')
         provider = self.output_layer.dataProvider()
         self.output_layer.startEditing()
-        provider.addAttributes([QgsField("LON_DMS", QVariant.String, len=30),
-                                QgsField("LAT_DMS", QVariant.String, len=30)])
+        provider.addAttributes([QgsField("NODE_DMS", QVariant.String, len=100)])
         self.output_layer.commitChanges()
         QgsProject.instance().addMapLayer(self.output_layer)
+
+    def set_output_layer_labels(self):
+        labels_setting = QgsPalLayerSettings()
+        labels_setting.isExpression = True
+        labels_setting.fieldName = "NODE_DMS"
+        lyr_set = QgsVectorLayerSimpleLabeling(labels_setting)
+        self.output_layer.setLabelsEnabled(True)
+        self.output_layer.setLabeling(lyr_set)
+        self.output_layer.triggerRepaint()
 
     def set_output_layer(self):
         """ Set output layer for polygon nodes with DMS format as active. """
         if self.output_layer is None:
             layer_name = self.gen_output_layer_name()
             self.create_output_layer(layer_name)
+            self.set_output_layer_labels()
         self.iface.setActiveLayer(self.output_layer)
 
     @staticmethod
@@ -231,12 +240,40 @@ class PolygonNodesToDMS:
         else:
             return True
 
+    def get_node_dms_pattern(self):
+        if self.dlg.radioButtonOrderLonLat.isChecked():
+            return "{lon} {lat}"
+        elif self.dlg.radioButtonOrderLatLon.isChecked():
+            return "{lat} {lon}"
+
     def show_nodes_dms(self):
         canvas = self.iface.mapCanvas()
         current_layer = canvas.currentLayer()
         if PolygonNodesToDMS.is_layer_polygon(current_layer):
             if PolygonNodesToDMS.one_feature_selected(current_layer):
+                selected_feature = current_layer.selectedFeatures()[0]
+                geom = selected_feature.geometry()
+                node_dms = self.get_node_dms_pattern()
                 self.set_output_layer()
+
+                feat = QgsFeature()
+                prov = self.output_layer.dataProvider()
+
+                self.output_layer.startEditing()
+                # Remove previous node coordinates
+                prov.truncate()
+
+                for node_location in geom.vertices():
+                    dms_string = node_dms.format(lon=node_location.x(), lat=node_location.y())
+                    feat.setGeometry(node_location)
+                    feat.setAttributes([dms_string])
+                    prov.addFeatures([feat])
+
+                self.output_layer.commitChanges()
+                self.output_layer.updateExtents()
+                self.iface.mapCanvas().setExtent(self.output_layer.extent())
+                self.iface.mapCanvas().refresh()
+        self.iface.setActiveLayer(current_layer)
 
     def run(self):
         """Run method that performs all the real work"""
