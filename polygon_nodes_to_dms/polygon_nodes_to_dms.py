@@ -32,6 +32,7 @@ from .resources import *
 from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
 import os.path
 from datetime import datetime
+from .aviation_gis_toolkit.angle import *
 
 
 class PolygonNodesToDMS:
@@ -262,9 +263,12 @@ class PolygonNodesToDMS:
                 self.output_layer.startEditing()
                 # Remove previous node coordinates
                 prov.truncate()
+                ang = Angle()
 
                 for node_location in geom.vertices():
-                    dms_string = node_dms.format(lon=node_location.x(), lat=node_location.y())
+                    lon_dms = ang.dd_to_dms_string(node_location.x(), AT_LONGITUDE)
+                    lat_dms = ang.dd_to_dms_string(node_location.y(), AT_LATITUDE)
+                    dms_string = node_dms.format(lon=lon_dms, lat=lat_dms)
                     feat.setGeometry(node_location)
                     feat.setAttributes([dms_string])
                     prov.addFeatures([feat])
@@ -284,6 +288,7 @@ class PolygonNodesToDMS:
             self.first_start = False
             self.dlg = PolygonNodesToDMSDialog()
             self.dlg.pushButtonShowNodes.clicked.connect(self.show_nodes_dms)
+            self.dlg.pushButtonCancel.clicked.connect(self.dlg.close)
 
         # show the dialog
         self.dlg.show()
