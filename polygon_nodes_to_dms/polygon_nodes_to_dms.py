@@ -243,10 +243,12 @@ class PolygonNodesToDMS:
         """
         if layer is None:
             QMessageBox.critical(QWidget(), "Message", "No active layer.")
+            return False
         elif layer.wkbType() in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
             return True
-        else:
-            QMessageBox.critical(QWidget(), "Message", "Active layer is not type: Polygon, Multipolygon.")
+
+        QMessageBox.critical(QWidget(), "Message", "Active layer is not type: Polygon, Multipolygon.")
+        return False
 
     @staticmethod
     def one_feature_selected(layer):
@@ -259,15 +261,16 @@ class PolygonNodesToDMS:
         if selected_count != 1:
             QMessageBox.critical(QWidget(), "Message", "{} polygons selected.\n"
                                                        "Select one polygon.".format(selected_count))
-        else:
-            return True
+            return False
+
+        return True
 
     def get_node_dms_pattern(self):
         """Return label value pattern"""
         if self.dlg.radioButtonOrderLonLat.isChecked():
             return "{lon} {lat}"
-        elif self.dlg.radioButtonOrderLatLon.isChecked():
-            return "{lat} {lon}"
+        # only radioButtonOrderLatLon can be checked
+        return "{lat} {lon}"
 
     def show_nodes_dms(self):
         """Generate and display polygon nodes coordinates in DMS format"""
