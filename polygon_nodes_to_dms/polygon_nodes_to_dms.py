@@ -27,12 +27,21 @@ import os.path
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QWidget
-from qgis.core import *
+from qgis.core import (
+    QgsFeature,
+    QgsField,
+    QgsPalLayerSettings,
+    QgsProject,
+    QgsVectorLayer,
+    QgsVectorLayerSimpleLabeling,
+    QgsWkbTypes
+)
 
+from .aviation_gis_toolkit.angle import Angle
+from .aviation_gis_toolkit.const import AT_LATITUDE, AT_LONGITUDE
 # Initialize Qt resources from file resources.py
-from .resources import *
+from .resources import qInitResources
 # Import the code for the dialog
-from .aviation_gis_toolkit.angle import *
 from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
 
 
