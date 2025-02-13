@@ -310,7 +310,7 @@ class PolygonNodesToDMS:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start == True:
+        if self.first_start:
             self.first_start = False
             self.dlg = PolygonNodesToDMSDialog()
             self.dlg.pushButtonShowNodes.clicked.connect(self.show_nodes_dms)
