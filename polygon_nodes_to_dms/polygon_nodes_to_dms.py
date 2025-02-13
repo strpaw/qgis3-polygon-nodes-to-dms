@@ -21,6 +21,9 @@
  *                                                                         *
  ***************************************************************************/
 """
+from datetime import datetime
+import os.path
+
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QWidget
@@ -29,10 +32,8 @@ from qgis.core import *
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
-from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
-import os.path
-from datetime import datetime
 from .aviation_gis_toolkit.angle import *
+from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
 
 
 class PolygonNodesToDMS:
