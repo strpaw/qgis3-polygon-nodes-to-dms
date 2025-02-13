@@ -217,6 +217,7 @@ class PolygonNodesToDMS:
         QgsProject.instance().addMapLayer(self.output_layer)
 
     def set_output_layer_labels(self):
+        """Add labels with coordinates to the output layer"""
         labels_setting = QgsPalLayerSettings()
         labels_setting.isExpression = True
         labels_setting.fieldName = "NODE_DMS"
@@ -235,6 +236,11 @@ class PolygonNodesToDMS:
 
     @staticmethod
     def is_layer_polygon(layer):
+        """Check if active layer has Polygon/MultiPolygon geometry type
+
+        :param layer: layer to be checked (active layer)
+        :return: True if layer geometry is Polygon/MultiPolygon, False otherwise
+        """
         if layer is None:
             QMessageBox.critical(QWidget(), "Message", "No active layer.")
         elif layer.wkbType() in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
@@ -244,6 +250,11 @@ class PolygonNodesToDMS:
 
     @staticmethod
     def one_feature_selected(layer):
+        """Check if only one feature is selected from active layer
+
+        :param layer: layer to be checked (active layer)
+        :return: True if one feature is selected, False otherwise
+        """
         selected_count = layer.selectedFeatureCount()
         if selected_count != 1:
             QMessageBox.critical(QWidget(), "Message", "{} polygons selected.\n"
@@ -252,12 +263,14 @@ class PolygonNodesToDMS:
             return True
 
     def get_node_dms_pattern(self):
+        """Return label value pattern"""
         if self.dlg.radioButtonOrderLonLat.isChecked():
             return "{lon} {lat}"
         elif self.dlg.radioButtonOrderLatLon.isChecked():
             return "{lat} {lon}"
 
     def show_nodes_dms(self):
+        """Generate and display polygon nodes coordinates in DMS format"""
         canvas = self.iface.mapCanvas()
         current_layer = canvas.currentLayer()
         if PolygonNodesToDMS.is_layer_polygon(current_layer):
