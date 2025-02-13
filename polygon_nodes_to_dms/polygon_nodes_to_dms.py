@@ -244,7 +244,7 @@ class PolygonNodesToDMS:
         if layer is None:
             QMessageBox.critical(QWidget(), "Message", "No active layer.")
             return False
-        elif layer.wkbType() in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
+        if layer.wkbType() in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
             return True
 
         QMessageBox.critical(QWidget(), "Message", "Active layer is not type: Polygon, Multipolygon.")
