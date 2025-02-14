@@ -67,7 +67,7 @@ class PolygonNodesToDMS:
         locale_path = os.path.join(
             self.plugin_dir,
             'i18n',
-            'PolygonNodesToDMS_{}.qm'.format(locale))
+            f'PolygonNodesToDMS_{locale}.qm')
 
         if os.path.exists(locale_path):
             self.translator = QTranslator()
@@ -205,7 +205,7 @@ class PolygonNodesToDMS:
         NodesDMS_<yyyy>_<mm>_<dd>_<hh><mm><sec><<frac_sec>
         """
         timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S.%f")
-        return 'NodesDMS_{}'.format(timestamp)
+        return f'NodesDMS_{timestamp}'
 
     def create_output_layer(self, layer_name):
         """ Create output layer with polygons - memory layer. """
@@ -259,8 +259,8 @@ class PolygonNodesToDMS:
         """
         selected_count = layer.selectedFeatureCount()
         if selected_count != 1:
-            QMessageBox.critical(QWidget(), "Message", "{} polygons selected.\n"
-                                                       "Select one polygon.".format(selected_count))
+            QMessageBox.critical(QWidget(), "Message", f"{selected_count} polygons selected.\n"
+                                                       "Select one polygon.")
             return False
 
         return True
