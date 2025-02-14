@@ -28,17 +28,18 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QWidget
 from qgis.core import (
+    Qgis,
+    QgsCoordinateFormatter,
     QgsFeature,
     QgsField,
     QgsPalLayerSettings,
+    QgsPointXY,
     QgsProject,
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
     QgsWkbTypes
 )
 
-from .aviation_gis_toolkit.angle import Angle
-from .aviation_gis_toolkit.const import AT_LATITUDE, AT_LONGITUDE
 # Initialize Qt resources from file resources.py
 from .resources import qInitResources
 # Import the code for the dialog
@@ -263,12 +264,16 @@ class PolygonNodesToDMS:
 
         return True
 
-    def get_node_dms_pattern(self):
-        """Return label value pattern"""
+    def get_coordinate_order(self):
+        """Return coordinate order lon/lat or lat/lon
+
+        :return: order XY if lon/lat, order YX if lat/lon Qgis.CoordinateOrder
+        """
         if self.dlg.radioButtonOrderLonLat.isChecked():
-            return "{lon} {lat}"
+            return Qgis.CoordinateOrder.XY
+
         # only radioButtonOrderLatLon can be checked
-        return "{lat} {lon}"
+        return Qgis.CoordinateOrder.YX
 
     def show_nodes_dms(self):
         """Generate and display polygon nodes coordinates in DMS format"""
@@ -278,23 +283,23 @@ class PolygonNodesToDMS:
             if PolygonNodesToDMS.one_feature_selected(current_layer):
                 selected_feature = current_layer.selectedFeatures()[0]
                 geom = selected_feature.geometry()
-                node_dms = self.get_node_dms_pattern()
                 self.set_output_layer()
-
+                coord_order = self.get_coordinate_order()
                 feat = QgsFeature()
                 prov = self.output_layer.dataProvider()
-
                 self.output_layer.startEditing()
                 # Remove previous node coordinates
                 prov.truncate()
-                ang = Angle()
 
                 for node_location in geom.vertices():
-                    lon_dms = ang.dd_to_dms_string(node_location.x(), AT_LONGITUDE)
-                    lat_dms = ang.dd_to_dms_string(node_location.y(), AT_LATITUDE)
-                    dms_string = node_dms.format(lon=lon_dms, lat=lat_dms)
+                    dms = QgsCoordinateFormatter.format(
+                        point=QgsPointXY(node_location),
+                        format=QgsCoordinateFormatter.FormatDegreesMinutesSeconds,
+                        precision=3,
+                        order=coord_order
+                    )
                     feat.setGeometry(node_location)
-                    feat.setAttributes([dms_string])
+                    feat.setAttributes([dms])
                     prov.addFeatures([feat])
 
                 self.output_layer.commitChanges()
