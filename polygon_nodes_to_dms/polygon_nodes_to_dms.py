@@ -21,18 +21,28 @@
  *                                                                         *
  ***************************************************************************/
 """
+from datetime import datetime
+import os.path
+
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QWidget
-from qgis.core import *
+from qgis.core import (
+    QgsFeature,
+    QgsField,
+    QgsPalLayerSettings,
+    QgsProject,
+    QgsVectorLayer,
+    QgsVectorLayerSimpleLabeling,
+    QgsWkbTypes
+)
 
+from .aviation_gis_toolkit.angle import Angle
+from .aviation_gis_toolkit.const import AT_LATITUDE, AT_LONGITUDE
 # Initialize Qt resources from file resources.py
-from .resources import *
+from .resources import qInitResources
 # Import the code for the dialog
 from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
-import os.path
-from datetime import datetime
-from .aviation_gis_toolkit.angle import *
 
 
 class PolygonNodesToDMS:
@@ -57,7 +67,7 @@ class PolygonNodesToDMS:
         locale_path = os.path.join(
             self.plugin_dir,
             'i18n',
-            'PolygonNodesToDMS_{}.qm'.format(locale))
+            f'PolygonNodesToDMS_{locale}.qm')
 
         if os.path.exists(locale_path):
             self.translator = QTranslator()
@@ -66,7 +76,7 @@ class PolygonNodesToDMS:
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&PolygonNodesToDMS')
+        self.menu = self.tr('&PolygonNodesToDMS')
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -86,7 +96,6 @@ class PolygonNodesToDMS:
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('PolygonNodesToDMS', message)
-
 
     def add_action(
         self,
@@ -168,19 +177,18 @@ class PolygonNodesToDMS:
         icon_path = ':/plugins/polygon_nodes_to_dms/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'PolygonNodesToDMS'),
+            text=self.tr('PolygonNodesToDMS'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
         # will be set False in run()
         self.first_start = True
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr(u'&PolygonNodesToDMS'),
+                self.tr('&PolygonNodesToDMS'),
                 action)
             self.iface.removeToolBarIcon(action)
 
@@ -195,7 +203,7 @@ class PolygonNodesToDMS:
         NodesDMS_<yyyy>_<mm>_<dd>_<hh><mm><sec><<frac_sec>
         """
         timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S.%f")
-        return 'NodesDMS_{}'.format(timestamp)
+        return f'NodesDMS_{timestamp}'
 
     def create_output_layer(self, layer_name):
         """ Create output layer with polygons - memory layer. """
@@ -207,6 +215,7 @@ class PolygonNodesToDMS:
         QgsProject.instance().addMapLayer(self.output_layer)
 
     def set_output_layer_labels(self):
+        """Add labels with coordinates to the output layer"""
         labels_setting = QgsPalLayerSettings()
         labels_setting.isExpression = True
         labels_setting.fieldName = "NODE_DMS"
@@ -225,29 +234,44 @@ class PolygonNodesToDMS:
 
     @staticmethod
     def is_layer_polygon(layer):
+        """Check if active layer has Polygon/MultiPolygon geometry type
+
+        :param layer: layer to be checked (active layer)
+        :return: True if layer geometry is Polygon/MultiPolygon, False otherwise
+        """
         if layer is None:
             QMessageBox.critical(QWidget(), "Message", "No active layer.")
-        elif layer.wkbType() in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
+            return False
+        if layer.wkbType() in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
             return True
-        else:
-            QMessageBox.critical(QWidget(), "Message", "Active layer is not type: Polygon, Multipolygon.")
+
+        QMessageBox.critical(QWidget(), "Message", "Active layer is not type: Polygon, Multipolygon.")
+        return False
 
     @staticmethod
     def one_feature_selected(layer):
+        """Check if only one feature is selected from active layer
+
+        :param layer: layer to be checked (active layer)
+        :return: True if one feature is selected, False otherwise
+        """
         selected_count = layer.selectedFeatureCount()
         if selected_count != 1:
-            QMessageBox.critical(QWidget(), "Message", "{} polygons selected.\n"
-                                                       "Select one polygon.".format(selected_count))
-        else:
-            return True
+            QMessageBox.critical(QWidget(), "Message", f"{selected_count} polygons selected.\n"
+                                                       "Select one polygon.")
+            return False
+
+        return True
 
     def get_node_dms_pattern(self):
+        """Return label value pattern"""
         if self.dlg.radioButtonOrderLonLat.isChecked():
             return "{lon} {lat}"
-        elif self.dlg.radioButtonOrderLatLon.isChecked():
-            return "{lat} {lon}"
+        # only radioButtonOrderLatLon can be checked
+        return "{lat} {lon}"
 
     def show_nodes_dms(self):
+        """Generate and display polygon nodes coordinates in DMS format"""
         canvas = self.iface.mapCanvas()
         current_layer = canvas.currentLayer()
         if PolygonNodesToDMS.is_layer_polygon(current_layer):
@@ -284,7 +308,7 @@ class PolygonNodesToDMS:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start == True:
+        if self.first_start:
             self.first_start = False
             self.dlg = PolygonNodesToDMSDialog()
             self.dlg.pushButtonShowNodes.clicked.connect(self.show_nodes_dms)
