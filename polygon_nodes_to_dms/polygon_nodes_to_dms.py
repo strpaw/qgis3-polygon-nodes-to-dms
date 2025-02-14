@@ -97,7 +97,6 @@ class PolygonNodesToDMS:
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('PolygonNodesToDMS', message)
 
-
     def add_action(
         self,
         icon_path,
@@ -184,7 +183,6 @@ class PolygonNodesToDMS:
 
         # will be set False in run()
         self.first_start = True
-
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
