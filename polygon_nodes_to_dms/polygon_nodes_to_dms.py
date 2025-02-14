@@ -76,7 +76,7 @@ class PolygonNodesToDMS:
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&PolygonNodesToDMS')
+        self.menu = self.tr('&PolygonNodesToDMS')
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -178,7 +178,7 @@ class PolygonNodesToDMS:
         icon_path = ':/plugins/polygon_nodes_to_dms/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'PolygonNodesToDMS'),
+            text=self.tr('PolygonNodesToDMS'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -190,7 +190,7 @@ class PolygonNodesToDMS:
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr(u'&PolygonNodesToDMS'),
+                self.tr('&PolygonNodesToDMS'),
                 action)
             self.iface.removeToolBarIcon(action)
 
