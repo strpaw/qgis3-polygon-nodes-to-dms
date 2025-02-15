@@ -6,7 +6,7 @@
 name=PolygonNodesToDMS
 qgisMinimumVersion=3.0
 description=Show polygon nodes in DMSH format
-version=0.1
+version=2025.2.1
 author=Paweł Strzelewicz
 email=@
 
