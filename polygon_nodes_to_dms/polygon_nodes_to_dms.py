@@ -21,28 +21,23 @@
  *                                                                         *
  ***************************************************************************/
 """
-from datetime import datetime
 import os.path
 
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QWidget
 from qgis.core import (
     Qgis,
     QgsCoordinateFormatter,
     QgsFeature,
-    QgsField,
-    QgsPalLayerSettings,
     QgsPointXY,
-    QgsProject,
-    QgsVectorLayer,
-    QgsVectorLayerSimpleLabeling,
     QgsWkbTypes
 )
 
 # Initialize Qt resources from file resources.py
 from .resources import qInitResources
 # Import the code for the dialog
+from .output_layer import OutputLayer
 from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
 
 
@@ -57,7 +52,7 @@ class PolygonNodesToDMS:
             application at run time.
         :type iface: QgsInterface
         """
-        self.output_layer = None
+        self.output_layer = OutputLayer(iface)
         self.current_layer = None
         # Save reference to the QGIS interface
         self.iface = iface
@@ -195,43 +190,8 @@ class PolygonNodesToDMS:
 
     def set_initial_plugin_state(self):
         """ Initialize plugin state when opened. """
-        self.output_layer = None
+        self.output_layer = OutputLayer(self.iface)
         self.dlg.radioButtonOrderLonLat.setChecked(True)
-
-    @staticmethod
-    def gen_output_layer_name():
-        """ Generate output layer name with the following pattern:
-        NodesDMS_<yyyy>_<mm>_<dd>_<hh><mm><sec><<frac_sec>
-        """
-        timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S.%f")
-        return f'NodesDMS_{timestamp}'
-
-    def create_output_layer(self, layer_name):
-        """ Create output layer with polygons - memory layer. """
-        self.output_layer = QgsVectorLayer('Point?crs=epsg:4326', layer_name, 'memory')
-        provider = self.output_layer.dataProvider()
-        self.output_layer.startEditing()
-        provider.addAttributes([QgsField("NODE_DMS", QVariant.String, len=100)])
-        self.output_layer.commitChanges()
-        QgsProject.instance().addMapLayer(self.output_layer)
-
-    def set_output_layer_labels(self):
-        """Add labels with coordinates to the output layer"""
-        labels_setting = QgsPalLayerSettings()
-        labels_setting.isExpression = True
-        labels_setting.fieldName = "NODE_DMS"
-        lyr_set = QgsVectorLayerSimpleLabeling(labels_setting)
-        self.output_layer.setLabelsEnabled(True)
-        self.output_layer.setLabeling(lyr_set)
-        self.output_layer.triggerRepaint()
-
-    def set_output_layer(self):
-        """ Set output layer for polygon nodes with DMS format as active. """
-        if self.output_layer is None:
-            layer_name = self.gen_output_layer_name()
-            self.create_output_layer(layer_name)
-            self.set_output_layer_labels()
-        self.iface.setActiveLayer(self.output_layer)
 
     @staticmethod
     def is_layer_polygon(layer):
@@ -283,11 +243,11 @@ class PolygonNodesToDMS:
             if PolygonNodesToDMS.one_feature_selected(current_layer):
                 selected_feature = current_layer.selectedFeatures()[0]
                 geom = selected_feature.geometry()
-                self.set_output_layer()
+                self.output_layer.setup()
                 coord_order = self.get_coordinate_order()
                 feat = QgsFeature()
-                prov = self.output_layer.dataProvider()
-                self.output_layer.startEditing()
+                prov = self.output_layer.layer.dataProvider()
+                self.output_layer.layer.startEditing()
                 # Remove previous node coordinates
                 prov.truncate()
 
@@ -302,9 +262,9 @@ class PolygonNodesToDMS:
                     feat.setAttributes([dms])
                     prov.addFeatures([feat])
 
-                self.output_layer.commitChanges()
-                self.output_layer.updateExtents()
-                self.iface.mapCanvas().setExtent(self.output_layer.extent())
+                self.output_layer.layer.commitChanges()
+                self.output_layer.layer.updateExtents()
+                self.iface.mapCanvas().setExtent(self.output_layer.layer.extent())
                 self.iface.mapCanvas().refresh()
         self.iface.setActiveLayer(current_layer)
 
