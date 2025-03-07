@@ -21,28 +21,31 @@
  *                                                                         *
  ***************************************************************************/
 """
-from datetime import datetime
+from __future__ import annotations
+
 import os.path
 
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QWidget
 from qgis.core import (
     Qgis,
     QgsCoordinateFormatter,
     QgsFeature,
-    QgsField,
-    QgsPalLayerSettings,
     QgsPointXY,
-    QgsProject,
     QgsVectorLayer,
-    QgsVectorLayerSimpleLabeling,
     QgsWkbTypes
 )
 
 # Initialize Qt resources from file resources.py
 from .resources import qInitResources
 # Import the code for the dialog
+from .errors import (
+    LayerNotSelectedError,
+    LayerNotPolygonMultiPolygonError,
+    OneFeatureNotSelectedError
+)
+from .output_layer import OutputLayer
 from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
 
 
@@ -57,8 +60,7 @@ class PolygonNodesToDMS:
             application at run time.
         :type iface: QgsInterface
         """
-        self.output_layer = None
-        self.current_layer = None
+        self.output_layer = OutputLayer(iface)
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
@@ -193,81 +195,37 @@ class PolygonNodesToDMS:
                 action)
             self.iface.removeToolBarIcon(action)
 
-    def set_initial_plugin_state(self):
-        """ Initialize plugin state when opened. """
-        self.output_layer = None
+    def set_initial_plugin_state(self) -> None:
+        """Initialize plugin state when opened."""
+        self.output_layer = OutputLayer(self.iface)
         self.dlg.radioButtonOrderLonLat.setChecked(True)
 
     @staticmethod
-    def gen_output_layer_name():
-        """ Generate output layer name with the following pattern:
-        NodesDMS_<yyyy>_<mm>_<dd>_<hh><mm><sec><<frac_sec>
+    def check_input(layer: QgsVectorLayer) -> bool | Exception:
+        """Check input for generating nodes with coordinates in DMS formats:
+        - selected layer geometry type must be Polygon/MultiPolygon
+        - only one feature must be selected
+
+        Raise corresponding exception if requirement is not met (LayerNotPolygonMultiPolygonError etc.).
+
+        :param layer: layer to be checked
+        :return: True if all conditions are met
         """
-        timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S.%f")
-        return f'NodesDMS_{timestamp}'
+        if not layer:
+            raise LayerNotSelectedError
+        if layer.wkbType() not in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
+            raise LayerNotPolygonMultiPolygonError
 
-    def create_output_layer(self, layer_name):
-        """ Create output layer with polygons - memory layer. """
-        self.output_layer = QgsVectorLayer('Point?crs=epsg:4326', layer_name, 'memory')
-        provider = self.output_layer.dataProvider()
-        self.output_layer.startEditing()
-        provider.addAttributes([QgsField("NODE_DMS", QVariant.String, len=100)])
-        self.output_layer.commitChanges()
-        QgsProject.instance().addMapLayer(self.output_layer)
-
-    def set_output_layer_labels(self):
-        """Add labels with coordinates to the output layer"""
-        labels_setting = QgsPalLayerSettings()
-        labels_setting.isExpression = True
-        labels_setting.fieldName = "NODE_DMS"
-        lyr_set = QgsVectorLayerSimpleLabeling(labels_setting)
-        self.output_layer.setLabelsEnabled(True)
-        self.output_layer.setLabeling(lyr_set)
-        self.output_layer.triggerRepaint()
-
-    def set_output_layer(self):
-        """ Set output layer for polygon nodes with DMS format as active. """
-        if self.output_layer is None:
-            layer_name = self.gen_output_layer_name()
-            self.create_output_layer(layer_name)
-            self.set_output_layer_labels()
-        self.iface.setActiveLayer(self.output_layer)
-
-    @staticmethod
-    def is_layer_polygon(layer):
-        """Check if active layer has Polygon/MultiPolygon geometry type
-
-        :param layer: layer to be checked (active layer)
-        :return: True if layer geometry is Polygon/MultiPolygon, False otherwise
-        """
-        if layer is None:
-            QMessageBox.critical(QWidget(), "Message", "No active layer.")
-            return False
-        if layer.wkbType() in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
-            return True
-
-        QMessageBox.critical(QWidget(), "Message", "Active layer is not type: Polygon, Multipolygon.")
-        return False
-
-    @staticmethod
-    def one_feature_selected(layer):
-        """Check if only one feature is selected from active layer
-
-        :param layer: layer to be checked (active layer)
-        :return: True if one feature is selected, False otherwise
-        """
         selected_count = layer.selectedFeatureCount()
         if selected_count != 1:
-            QMessageBox.critical(QWidget(), "Message", f"{selected_count} polygons selected.\n"
-                                                       "Select one polygon.")
-            return False
+            raise OneFeatureNotSelectedError
 
         return True
 
-    def get_coordinate_order(self):
-        """Return coordinate order lon/lat or lat/lon
+    def get_coordinate_order(self) -> Qgis.CoordinateOrder:
+        """Return coordinate order lon/lat or lat/lon.
 
-        :return: order XY if lon/lat, order YX if lat/lon Qgis.CoordinateOrder
+        :return: order XY if lon/lat, order YX if lat/lon of Qgis.CoordinateOrder
         """
         if self.dlg.radioButtonOrderLonLat.isChecked():
             return Qgis.CoordinateOrder.XY
@@ -275,38 +233,49 @@ class PolygonNodesToDMS:
         # only radioButtonOrderLatLon can be checked
         return Qgis.CoordinateOrder.YX
 
-    def show_nodes_dms(self):
-        """Generate and display polygon nodes coordinates in DMS format"""
+    def show_nodes_dms(self) -> None:
+        """Generate and display polygon nodes coordinates in DMS format."""
         canvas = self.iface.mapCanvas()
-        current_layer = canvas.currentLayer()
-        if PolygonNodesToDMS.is_layer_polygon(current_layer):
-            if PolygonNodesToDMS.one_feature_selected(current_layer):
-                selected_feature = current_layer.selectedFeatures()[0]
-                geom = selected_feature.geometry()
-                self.set_output_layer()
-                coord_order = self.get_coordinate_order()
-                feat = QgsFeature()
-                prov = self.output_layer.dataProvider()
-                self.output_layer.startEditing()
-                # Remove previous node coordinates
-                prov.truncate()
+        src_layer = canvas.currentLayer()
 
-                for node_location in geom.vertices():
-                    dms = QgsCoordinateFormatter.format(
-                        point=QgsPointXY(node_location),
-                        format=QgsCoordinateFormatter.FormatDegreesMinutesSeconds,
-                        precision=3,
-                        order=coord_order
-                    )
-                    feat.setGeometry(node_location)
-                    feat.setAttributes([dms])
-                    prov.addFeatures([feat])
+        check_result = False
+        try:
+            check_result = PolygonNodesToDMS.check_input(src_layer)
+        except LayerNotSelectedError:
+            QMessageBox.critical(QWidget(), "Message", "No active layer.")
+        except LayerNotPolygonMultiPolygonError:
+            QMessageBox.critical(QWidget(), "Message", "Active layer is not type: Polygon, Multipolygon.")
+        except OneFeatureNotSelectedError:
+            QMessageBox.critical(QWidget(), "Message", "Select one polygon")
 
-                self.output_layer.commitChanges()
-                self.output_layer.updateExtents()
-                self.iface.mapCanvas().setExtent(self.output_layer.extent())
-                self.iface.mapCanvas().refresh()
-        self.iface.setActiveLayer(current_layer)
+        if not check_result:
+            return
+
+        selected_feature = src_layer.selectedFeatures()[0]
+        geom = selected_feature.geometry()
+        self.output_layer.setup()
+        coord_order = self.get_coordinate_order()
+        feat = QgsFeature()
+        prov = self.output_layer.layer.dataProvider()
+        self.output_layer.layer.startEditing()
+        # Remove previous node coordinates
+        prov.truncate()
+        for node_location in geom.vertices():
+            dms = QgsCoordinateFormatter.format(
+                point=QgsPointXY(node_location),
+                format=QgsCoordinateFormatter.FormatDegreesMinutesSeconds,
+                precision=3,
+                order=coord_order
+            )
+            feat.setGeometry(node_location)
+            feat.setAttributes([dms])
+            prov.addFeatures([feat])
+
+        self.output_layer.layer.commitChanges()
+        self.output_layer.layer.updateExtents()
+        self.iface.mapCanvas().setExtent(self.output_layer.layer.extent())
+        self.iface.mapCanvas().refresh()
+        self.iface.setActiveLayer(src_layer)
 
     def run(self):
         """Run method that performs all the real work"""
