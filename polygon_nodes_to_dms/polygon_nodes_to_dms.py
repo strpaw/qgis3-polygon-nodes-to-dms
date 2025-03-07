@@ -195,8 +195,8 @@ class PolygonNodesToDMS:
                 action)
             self.iface.removeToolBarIcon(action)
 
-    def set_initial_plugin_state(self):
-        """ Initialize plugin state when opened. """
+    def set_initial_plugin_state(self) -> None:
+        """Initialize plugin state when opened."""
         self.output_layer = OutputLayer(self.iface)
         self.dlg.radioButtonOrderLonLat.setChecked(True)
 
@@ -222,10 +222,10 @@ class PolygonNodesToDMS:
 
         return True
 
-    def get_coordinate_order(self):
-        """Return coordinate order lon/lat or lat/lon
+    def get_coordinate_order(self) -> Qgis.CoordinateOrder:
+        """Return coordinate order lon/lat or lat/lon.
 
-        :return: order XY if lon/lat, order YX if lat/lon Qgis.CoordinateOrder
+        :return: order XY if lon/lat, order YX if lat/lon of Qgis.CoordinateOrder
         """
         if self.dlg.radioButtonOrderLonLat.isChecked():
             return Qgis.CoordinateOrder.XY
@@ -234,7 +234,7 @@ class PolygonNodesToDMS:
         return Qgis.CoordinateOrder.YX
 
     def show_nodes_dms(self) -> None:
-        """Generate and display polygon nodes coordinates in DMS format"""
+        """Generate and display polygon nodes coordinates in DMS format."""
         canvas = self.iface.mapCanvas()
         src_layer = canvas.currentLayer()
 
