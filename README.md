@@ -8,6 +8,7 @@ QGIS Plugin to add labels with coordinates in DMS (degrees, minutes, seconds) fo
 - [Installation](#installation)
   - [Git user](#git_user)
   - [No Git user](#no_git_user)
+- [Input/output data](#input_output)
 - [Usage](#usage)
 
 # Installation <a name=installation>
@@ -36,6 +37,23 @@ QGIS Plugin to add labels with coordinates in DMS (degrees, minutes, seconds) fo
    5.3 Select zip `polygon_nodes_to_dms.zip`  
    5.4 Press `Install Plugin button`  
 6. Plugin is installed: `Plugins > PolygonNodesToDMS`
+
+# Input/output data <a name=input_output>
+
+## Input
+  * layer with geometry type:Polygon/MultiPolygon
+  * one feature must be selected
+
+## Output
+
+* memory type layer with generate DMS nodes coordinates
+* layer name format: `NodesDMS_<timestamp>`
+  * where `<timestamp>` is in format: `<YYYY>_<MM>_<DD>_<HH><MM>`
+    * YYYY - year
+    * MM - month
+    * DD - day of month
+    * HH - hour
+    * MM - minutes
 
 # Usage <a name=usage>
 
