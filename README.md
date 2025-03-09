@@ -2,6 +2,8 @@
 
 QGIS Plugin to add labels with coordinates in DMS (degrees, minutes, seconds) format to the polygon/multipolygon nodes (vertices)
 
+Plugin version number follows https://semver.org/ rules.
+
 ![img](img//polygons_nodes_to_dms_example.jpg)
 
 
