@@ -40,7 +40,7 @@ from qgis.core import (
 # Initialize Qt resources from file resources.py
 from .resources import qInitResources
 # Import the code for the dialog
-from .errors import (
+from .exceptions import (
     LayerNotSelectedError,
     LayerNotPolygonMultiPolygonError,
     OneFeatureNotSelectedError
