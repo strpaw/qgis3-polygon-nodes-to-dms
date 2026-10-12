@@ -1,17 +1,17 @@
-"""Custom exceptions."""
+"""Custom exceptions for the Nodes to DMS plugin"""
 
 
 class NodesToDMSBaseError(Exception):
-    """Plugin base exception."""
+    """Base exception for Nodes to DMS Plugin."""
 
 
 class LayerNotSelectedError(NodesToDMSBaseError):
-    """Risen when there is no active layer (layer is not selected from layer list)."""
+    """Raised when no active layer is selected."""
 
 
 class LayerNotPolygonMultiPolygonError(NodesToDMSBaseError):
-    """Risen when active layer is not Polygon or MultiPolygon type."""
+    """Raised when the layer geometry type is not Polygon or MultiPolygon."""
 
 
 class OneFeatureNotSelectedError(NodesToDMSBaseError):
-    """Risen when active layers has no or more than 1 selected features."""
+    """Raised when exactly one feature is not selected."""
