@@ -24,15 +24,21 @@
 
 import os
 
+# from owslib.swe.common import Coordinate
+from qgis._core import QgsVectorLayer, Qgis
 from qgis.PyQt import uic
-from qgis.PyQt import QtWidgets
+from qgis.PyQt.QtWidgets import QDialog, QMessageBox, QWidget
+
+from .exceptions import InvalidLayerGeometryTypeError, OneFeatureNotSelectedError
+from .utils import validate_layer
+
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'polygon_nodes_to_dms_dialog_base.ui'))
 
 
-class PolygonNodesToDMSDialog(QtWidgets.QDialog, FORM_CLASS):
+class PolygonNodesToDMSDialog(QDialog, FORM_CLASS):
     def __init__(self, parent=None):
         """Constructor."""
         super(PolygonNodesToDMSDialog, self).__init__(parent)
@@ -42,3 +48,37 @@ class PolygonNodesToDMSDialog(QtWidgets.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.pushButtonCancel.clicked.connect(self.close)
+
+    def initialize_gui_state(self) -> None:
+        """Initialize plugin state when opened."""
+        self.radioButtonOrderLonLat.setChecked(True)
+
+    def get_coordinate_order(self) -> Qgis.CoordinateOrder:
+        """Return coordinate.
+
+        :return: order XY if lon/lat, order YX if lat/lon of Qgis.CoordinateOrder
+        """
+        if self.radioButtonOrderLonLat.isChecked():
+            return Qgis.CoordinateOrder.XY
+
+        # only radioButtonOrderLatLon can be checked
+        return Qgis.CoordinateOrder.YX
+
+    @staticmethod
+    def validate(layer: QgsVectorLayer) -> bool:
+        """Validate plugin data input.
+
+        :param layer: Vector layer to validate.
+        :return: True if validation succeeds, otherwise False.
+        """
+        try:
+            validate_layer(layer)
+        except (InvalidLayerGeometryTypeError, OneFeatureNotSelectedError) as e:
+            QMessageBox.critical(QWidget(), "Validation error", str(e))
+            return False
+        except Exception:
+            QMessageBox.critical(QWidget(), "Error", "Unhandled error. See QGIS Python logs.")
+            return False
+        else:
+            return True

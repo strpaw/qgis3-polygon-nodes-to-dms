@@ -27,24 +27,16 @@ import os.path
 
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QMessageBox, QWidget
+from qgis.PyQt.QtWidgets import QAction, QWidget
 from qgis.core import (
-    Qgis,
     QgsCoordinateFormatter,
     QgsFeature,
-    QgsPointXY,
-    QgsVectorLayer,
-    QgsWkbTypes
+    QgsPointXY
 )
 
 # Initialize Qt resources from file resources.py
 from .resources import qInitResources
 # Import the code for the dialog
-from .errors import (
-    LayerNotSelectedError,
-    LayerNotPolygonMultiPolygonError,
-    OneFeatureNotSelectedError
-)
 from .output_layer import OutputLayer
 from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
 
@@ -195,66 +187,20 @@ class PolygonNodesToDMS:
                 action)
             self.iface.removeToolBarIcon(action)
 
-    def set_initial_plugin_state(self) -> None:
-        """Initialize plugin state when opened."""
-        self.output_layer = OutputLayer(self.iface)
-        self.dlg.radioButtonOrderLonLat.setChecked(True)
-
-    @staticmethod
-    def check_input(layer: QgsVectorLayer) -> bool | Exception:
-        """Check input for generating nodes with coordinates in DMS formats:
-        - selected layer geometry type must be Polygon/MultiPolygon
-        - only one feature must be selected
-
-        Raise corresponding exception if requirement is not met (LayerNotPolygonMultiPolygonError etc.).
-
-        :param layer: layer to be checked
-        :return: True if all conditions are met
-        """
-        if not layer:
-            raise LayerNotSelectedError
-        if layer.wkbType() not in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
-            raise LayerNotPolygonMultiPolygonError
-
-        selected_count = layer.selectedFeatureCount()
-        if selected_count != 1:
-            raise OneFeatureNotSelectedError
-
-        return True
-
-    def get_coordinate_order(self) -> Qgis.CoordinateOrder:
-        """Return coordinate order lon/lat or lat/lon.
-
-        :return: order XY if lon/lat, order YX if lat/lon of Qgis.CoordinateOrder
-        """
-        if self.dlg.radioButtonOrderLonLat.isChecked():
-            return Qgis.CoordinateOrder.XY
-
-        # only radioButtonOrderLatLon can be checked
-        return Qgis.CoordinateOrder.YX
-
     def show_nodes_dms(self) -> None:
         """Generate and display polygon nodes coordinates in DMS format."""
         canvas = self.iface.mapCanvas()
         src_layer = canvas.currentLayer()
 
-        check_result = False
-        try:
-            check_result = PolygonNodesToDMS.check_input(src_layer)
-        except LayerNotSelectedError:
-            QMessageBox.critical(QWidget(), "Message", "No active layer.")
-        except LayerNotPolygonMultiPolygonError:
-            QMessageBox.critical(QWidget(), "Message", "Active layer is not type: Polygon, Multipolygon.")
-        except OneFeatureNotSelectedError:
-            QMessageBox.critical(QWidget(), "Message", "Select one polygon")
-
+        check_result = self.dlg.validate(src_layer)
         if not check_result:
             return
 
         selected_feature = src_layer.selectedFeatures()[0]
         geom = selected_feature.geometry()
+        self.output_layer = OutputLayer(self.iface)
         self.output_layer.setup()
-        coord_order = self.get_coordinate_order()
+        coord_order = self.dlg.get_coordinate_order()
         feat = QgsFeature()
         prov = self.output_layer.layer.dataProvider()
         self.output_layer.layer.startEditing()
@@ -286,11 +232,10 @@ class PolygonNodesToDMS:
             self.first_start = False
             self.dlg = PolygonNodesToDMSDialog()
             self.dlg.pushButtonShowNodes.clicked.connect(self.show_nodes_dms)
-            self.dlg.pushButtonCancel.clicked.connect(self.dlg.close)
 
         # show the dialog
         self.dlg.show()
-        self.set_initial_plugin_state()
+        self.dlg.initialize_gui_state()
         # Run the dialog event loop
         result = self.dlg.exec_()
         # See if OK was pressed
