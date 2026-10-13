@@ -27,24 +27,17 @@ import os.path
 
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QMessageBox, QWidget
+from qgis.PyQt.QtWidgets import QAction, QWidget
 from qgis.core import (
     Qgis,
     QgsCoordinateFormatter,
     QgsFeature,
-    QgsPointXY,
-    QgsVectorLayer,
-    QgsWkbTypes
+    QgsPointXY
 )
 
 # Initialize Qt resources from file resources.py
 from .resources import qInitResources
 # Import the code for the dialog
-from .exceptions import (
-    LayerNotSelectedError,
-    LayerNotPolygonMultiPolygonError,
-    OneFeatureNotSelectedError
-)
 from .output_layer import OutputLayer
 from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
 
@@ -200,28 +193,6 @@ class PolygonNodesToDMS:
         self.output_layer = OutputLayer(self.iface)
         self.dlg.radioButtonOrderLonLat.setChecked(True)
 
-    @staticmethod
-    def check_input(layer: QgsVectorLayer) -> bool | Exception:
-        """Check input for generating nodes with coordinates in DMS formats:
-        - selected layer geometry type must be Polygon/MultiPolygon
-        - only one feature must be selected
-
-        Raise corresponding exception if requirement is not met (LayerNotPolygonMultiPolygonError etc.).
-
-        :param layer: layer to be checked
-        :return: True if all conditions are met
-        """
-        if not layer:
-            raise LayerNotSelectedError
-        if layer.wkbType() not in [QgsWkbTypes.Polygon, QgsWkbTypes.MultiPolygon]:
-            raise LayerNotPolygonMultiPolygonError
-
-        selected_count = layer.selectedFeatureCount()
-        if selected_count != 1:
-            raise OneFeatureNotSelectedError
-
-        return True
-
     def get_coordinate_order(self) -> Qgis.CoordinateOrder:
         """Return coordinate order lon/lat or lat/lon.
 
@@ -238,16 +209,7 @@ class PolygonNodesToDMS:
         canvas = self.iface.mapCanvas()
         src_layer = canvas.currentLayer()
 
-        check_result = False
-        try:
-            check_result = PolygonNodesToDMS.check_input(src_layer)
-        except LayerNotSelectedError:
-            QMessageBox.critical(QWidget(), "Message", "No active layer.")
-        except LayerNotPolygonMultiPolygonError:
-            QMessageBox.critical(QWidget(), "Message", "Active layer is not type: Polygon, Multipolygon.")
-        except OneFeatureNotSelectedError:
-            QMessageBox.critical(QWidget(), "Message", "Select one polygon")
-
+        check_result = self.dlg.validate(src_layer)
         if not check_result:
             return
 

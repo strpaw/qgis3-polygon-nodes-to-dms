@@ -24,15 +24,20 @@
 
 import os
 
+from qgis._core import QgsVectorLayer
 from qgis.PyQt import uic
-from qgis.PyQt import QtWidgets
+from qgis.PyQt.QtWidgets import QDialog, QMessageBox, QWidget
+
+from .exceptions import InvalidLayerGeometryTypeError, OneFeatureNotSelectedError
+from .utils import validate_layer
+
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'polygon_nodes_to_dms_dialog_base.ui'))
 
 
-class PolygonNodesToDMSDialog(QtWidgets.QDialog, FORM_CLASS):
+class PolygonNodesToDMSDialog(QDialog, FORM_CLASS):
     def __init__(self, parent=None):
         """Constructor."""
         super(PolygonNodesToDMSDialog, self).__init__(parent)
@@ -42,3 +47,21 @@ class PolygonNodesToDMSDialog(QtWidgets.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+
+    @staticmethod
+    def validate(layer: QgsVectorLayer) -> bool:
+        """Validate plugin data input.
+
+        :param layer: Vector layer to validate.
+        :return: True if validation succeeds, otherwise False.
+        """
+        try:
+            validate_layer(layer)
+        except (InvalidLayerGeometryTypeError, OneFeatureNotSelectedError) as e:
+            QMessageBox.critical(QWidget(), "Validation error", str(e))
+            return False
+        except Exception:
+            QMessageBox.critical(QWidget(), "Error", "Unhandled error. See QGIS Python logs.")
+            return False
+        else:
+            return True
