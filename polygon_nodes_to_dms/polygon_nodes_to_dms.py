@@ -232,7 +232,6 @@ class PolygonNodesToDMS:
             self.first_start = False
             self.dlg = PolygonNodesToDMSDialog()
             self.dlg.pushButtonShowNodes.clicked.connect(self.show_nodes_dms)
-            self.dlg.pushButtonCancel.clicked.connect(self.dlg.close)
 
         # show the dialog
         self.dlg.show()
