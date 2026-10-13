@@ -48,6 +48,10 @@ class PolygonNodesToDMSDialog(QDialog, FORM_CLASS):
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
 
+    def initialize_gui_state(self) -> None:
+        """Initialize plugin state when opened."""
+        self.radioButtonOrderLonLat.setChecked(True)
+
     @staticmethod
     def validate(layer: QgsVectorLayer) -> bool:
         """Validate plugin data input.

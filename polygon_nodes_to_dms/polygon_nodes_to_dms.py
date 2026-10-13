@@ -188,11 +188,6 @@ class PolygonNodesToDMS:
                 action)
             self.iface.removeToolBarIcon(action)
 
-    def set_initial_plugin_state(self) -> None:
-        """Initialize plugin state when opened."""
-        self.output_layer = OutputLayer(self.iface)
-        self.dlg.radioButtonOrderLonLat.setChecked(True)
-
     def get_coordinate_order(self) -> Qgis.CoordinateOrder:
         """Return coordinate order lon/lat or lat/lon.
 
@@ -215,6 +210,7 @@ class PolygonNodesToDMS:
 
         selected_feature = src_layer.selectedFeatures()[0]
         geom = selected_feature.geometry()
+        self.output_layer = OutputLayer(self.iface)
         self.output_layer.setup()
         coord_order = self.get_coordinate_order()
         feat = QgsFeature()
@@ -252,7 +248,7 @@ class PolygonNodesToDMS:
 
         # show the dialog
         self.dlg.show()
-        self.set_initial_plugin_state()
+        self.dlg.initialize_gui_state()
         # Run the dialog event loop
         result = self.dlg.exec_()
         # See if OK was pressed
