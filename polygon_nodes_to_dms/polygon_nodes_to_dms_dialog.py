@@ -24,7 +24,8 @@
 
 import os
 
-from qgis._core import QgsVectorLayer
+# from owslib.swe.common import Coordinate
+from qgis._core import QgsVectorLayer, Qgis
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QDialog, QMessageBox, QWidget
 
@@ -51,6 +52,17 @@ class PolygonNodesToDMSDialog(QDialog, FORM_CLASS):
     def initialize_gui_state(self) -> None:
         """Initialize plugin state when opened."""
         self.radioButtonOrderLonLat.setChecked(True)
+
+    def get_coordinate_order(self) -> Qgis.CoordinateOrder:
+        """Return coordinate.
+
+        :return: order XY if lon/lat, order YX if lat/lon of Qgis.CoordinateOrder
+        """
+        if self.radioButtonOrderLonLat.isChecked():
+            return Qgis.CoordinateOrder.XY
+
+        # only radioButtonOrderLatLon can be checked
+        return Qgis.CoordinateOrder.YX
 
     @staticmethod
     def validate(layer: QgsVectorLayer) -> bool:

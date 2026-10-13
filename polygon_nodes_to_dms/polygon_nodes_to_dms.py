@@ -29,7 +29,6 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QWidget
 from qgis.core import (
-    Qgis,
     QgsCoordinateFormatter,
     QgsFeature,
     QgsPointXY
@@ -188,17 +187,6 @@ class PolygonNodesToDMS:
                 action)
             self.iface.removeToolBarIcon(action)
 
-    def get_coordinate_order(self) -> Qgis.CoordinateOrder:
-        """Return coordinate order lon/lat or lat/lon.
-
-        :return: order XY if lon/lat, order YX if lat/lon of Qgis.CoordinateOrder
-        """
-        if self.dlg.radioButtonOrderLonLat.isChecked():
-            return Qgis.CoordinateOrder.XY
-
-        # only radioButtonOrderLatLon can be checked
-        return Qgis.CoordinateOrder.YX
-
     def show_nodes_dms(self) -> None:
         """Generate and display polygon nodes coordinates in DMS format."""
         canvas = self.iface.mapCanvas()
@@ -212,7 +200,7 @@ class PolygonNodesToDMS:
         geom = selected_feature.geometry()
         self.output_layer = OutputLayer(self.iface)
         self.output_layer.setup()
-        coord_order = self.get_coordinate_order()
+        coord_order = self.dlg.get_coordinate_order()
         feat = QgsFeature()
         prov = self.output_layer.layer.dataProvider()
         self.output_layer.layer.startEditing()
