@@ -8,68 +8,68 @@ from qgis.core import (
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling
 )
-from qgis.gui import QgisInterface
 from qgis.PyQt.QtCore import QVariant
 
+
 FIELD_NAME = "node_dms"
+LAYER_NAME_PREFIX = "NodesDMS"
+LAYER_NAME_SUFFIX_FORMAT = "%Y_%m_%d_%H%M"
+LAYER_CRS = "epsg:4326"
 
 
-class OutputLayer:
-    """Output layer handling."""
+def generate_name() -> str:
+    """Generate layer name using current timestamp.
 
-    def __init__(self, iface: QgisInterface):
-        self.iface = iface
-        self.name = None
-        self.layer = None
+    :return: A name in the format <prefix>_<timestamp>
+    """
+    timestamp = datetime.now()
+    return f"{LAYER_NAME_PREFIX}_{timestamp.strftime(LAYER_NAME_SUFFIX_FORMAT)}"
 
-    def _generate_name(self) -> None:
-        """Generate name based in format: NodesDMS_<YYYY>_<MM>_<DD>_<HH><MM>."""
-        timestamp = datetime.now()
-        self.name = f'NodesDMS_{timestamp.strftime("%Y_%m_%d_%H%M")}'
 
-    def create(self) -> None:
-        """Create result layer as Point layer. Note this is memory layer so before closing QGIS save it on the disk
-        to keep results.
-        """
-        self._generate_name()
-        self.layer = QgsVectorLayer(
-            path="Point?crs=epsg:4326",
-            baseName=self.name,
-            providerLib="memory"
-        )
-        self.layer.startEditing()
-        prov = self.layer.dataProvider()
-        prov.addAttributes(
-            [
-                QgsField(
-                    name=FIELD_NAME,
-                    type=QVariant.String,
-                    len=100
-                ),
-            ]
-        )
-        self.layer.commitChanges()
+def create_layer(name: str) -> QgsVectorLayer:
+    """Create output layer - to keep formatted polygon vertices with formatted DMS coordinates.
+    
+    :param name: Name of the output layer.
+    :return: The created output layer (point, memory).
+    """
+    layer = QgsVectorLayer(
+        path=f"Point?crs={LAYER_CRS}",
+        baseName=name,
+        providerLib="memory"
+    )
+    prov = layer.dataProvider()
+    prov.addAttributes(
+        [
+            QgsField(
+                name=FIELD_NAME,
+                type=QVariant.String,
+                len=100
+            ),
+        ]
+    )
+    layer.updateFields()
+    return layer
 
-    def set_labels(self) -> None:
-        """Set labels with coordinates to the output layer."""
-        labels_setting = QgsPalLayerSettings()
-        labels_setting.isExpression = True
-        labels_setting.fieldName = FIELD_NAME
-        lyr_set = QgsVectorLayerSimpleLabeling(labels_setting)
-        self.layer.setLabelsEnabled(True)
-        self.layer.setLabeling(lyr_set)
-        self.layer.triggerRepaint()
 
-    def is_registered(self) -> bool:
-        """Check if result layer is added to the layer list in the current project - layer was created
-         and not removed from layers list in QGIS Project."""
-        return bool(QgsProject.instance().mapLayersByName(self.name))
+def set_labels(layer: QgsVectorLayer) -> None:
+    """Enable labeling using the output field.
 
-    def setup(self) -> None:
-        """Prepare result layer for editing."""
-        if not self.name or not self.is_registered():
-            self.create()
-            self.set_labels()
-            QgsProject.instance().addMapLayer(self.layer)
+    :param layer: output layer.
+    """
+    settings = QgsPalLayerSettings()
+    settings.isExpression = True
+    settings.fieldName = FIELD_NAME
+    layer.setLabeling(QgsVectorLayerSimpleLabeling(settings))
+    layer.setLabelsEnabled(True)
+    layer.triggerRepaint()
 
-        self.iface.setActiveLayer(self.layer)
+
+def get_output_layer() -> QgsVectorLayer:
+    """Create, configure, and register the output layer.
+
+    :return: The configured output layer added to the current project.
+    """
+    layer = create_layer(generate_name())
+    set_labels(layer)
+    QgsProject.instance().addMapLayer(layer)
+    return layer
