@@ -37,7 +37,7 @@ from qgis.core import (
 # Initialize Qt resources from file resources.py
 from .resources import qInitResources
 # Import the code for the dialog
-from .output_layer import OutputLayer
+from .output_layer import get_output_layer
 from .polygon_nodes_to_dms_dialog import PolygonNodesToDMSDialog
 
 
@@ -52,7 +52,6 @@ class PolygonNodesToDMS:
             application at run time.
         :type iface: QgsInterface
         """
-        self.output_layer = OutputLayer(iface)
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
@@ -198,12 +197,11 @@ class PolygonNodesToDMS:
 
         selected_feature = src_layer.selectedFeatures()[0]
         geom = selected_feature.geometry()
-        self.output_layer = OutputLayer(self.iface)
-        self.output_layer.setup()
+        output_layer = get_output_layer()
         coord_order = self.dlg.get_coordinate_order()
         feat = QgsFeature()
-        prov = self.output_layer.layer.dataProvider()
-        self.output_layer.layer.startEditing()
+        prov = output_layer.dataProvider()
+        output_layer.startEditing()
         # Remove previous node coordinates
         prov.truncate()
         for node_location in geom.vertices():
@@ -217,9 +215,9 @@ class PolygonNodesToDMS:
             feat.setAttributes([dms])
             prov.addFeatures([feat])
 
-        self.output_layer.layer.commitChanges()
-        self.output_layer.layer.updateExtents()
-        self.iface.mapCanvas().setExtent(self.output_layer.layer.extent())
+        output_layer.commitChanges()
+        output_layer.updateExtents()
+        self.iface.mapCanvas().setExtent(output_layer.extent())
         self.iface.mapCanvas().refresh()
         self.iface.setActiveLayer(src_layer)
 
